@@ -60,8 +60,9 @@ function listGames(){
         }
     }
 }
-function printHPMoney($money){
+function printHPMoney($input){
     $results = array();
+    $money=abs($input);
     $results[0]= floor($money/GALLEONS);
     $results[1]= floor(($money-($results[0]*GALLEONS))/SICKLES);
     $results[2]= $money-($results[0]*GALLEONS)-($results[1]*SICKLES);
@@ -265,7 +266,7 @@ function doGame($username,$gameid){
                 }
             }
         } else if(isset($_POST['drawBean'])){
-            processBean($_SESSION['bean'],$username,$gameid);
+            $userMoney=processBean($_SESSION['bean'],$username,$gameid);
         }
         $uploadUserData = 'UPDATE myPHPusers SET `money`='.$userMoney.' WHERE `username`="'.$username.'"';
         if($UPDATEResult=debugQuery($uploadUserData)){
@@ -275,7 +276,8 @@ function doGame($username,$gameid){
             session_destroy();
             die();
         }
-        $_SESSION['bean']=$gameBeans[array_rand($gameBeans)];
+        $rando=array_rand($gameBeans);
+        $_SESSION['bean']=$gameBeans[$rando];
         $players=array();
         if($allUsers = debugQuery('SELECT `money`,`username`,`color` FROM `myPHPusers` WHERE `gameid`="'.$gameid.'"')){
             if($allUsers->num_rows){
