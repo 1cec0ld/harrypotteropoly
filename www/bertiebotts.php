@@ -1,6 +1,5 @@
 <?php
 /*House 0.6.26 Crest 1.2.24   Liver  brown*/
-/*Get from each 0.8.18   Chocolate  brown*/
 
 function loadBeans($tableID){
     $beans=array();
@@ -20,6 +19,17 @@ function processBean($beanObject,$username,$gameid){
         printBean(true,'You Get a Letter to Hogwarts! This does nothing yet...',$beanObject);
     } else if($beanObject->value=="GotoJail"){
         printBean(false,'Now Go To Azkaban! This does nothing yet...',$beanObject);
+    } else if($beanObject->value=="Fromeach250"){
+        $result=debugQuery('SELECT `money`,`username` FROM `myPHPusers` WHERE `gameid`="'.$gameid.'"');
+        $avar=0;
+        while($target=$result->fetch_object()){
+            $decr=$target->money-250;
+            debugQuery('UPDATE `myPHPusers` SET `money`='.$decr.' WHERE `username`="'.$target->username.'"');
+            $avar+=250;
+        }
+        $newMoney=$SELECTResult->fetch_object()->money+$avar;
+        printBean(true,'You coerce others into paying you 8 Sickles 18 Knuts!',$beanObject);
+        return $newMoney;
     } else {
         debugQuery('UPDATE `'.$gameid.'Beans` SET `owner`="'.$username.'" WHERE `name`="'.$beanObject->name.'"');
         printBean(true,'You found a Get Out of Azaban Free Card! This does nothing yet...',$beanObject);
