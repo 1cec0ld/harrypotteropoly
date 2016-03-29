@@ -2,6 +2,7 @@
 echo '<title>HP Monopoly</title>';
 require 'sql_connect.php';
 require 'bertiebotts.php';
+require 'properties.php';
 
 session_start();
 
@@ -107,11 +108,8 @@ function createGame($username,$gameid,$maxplayers){
         debugQuery('ALTER TABLE `'.$gameid.'Wizards` ADD `owner` VARCHAR( 16 ) NOT NULL');
         */
         //create properties for new game
-        /*
         debugQuery('CREATE TABLE `'.$gameid.'Properties` LIKE `myPHPproperties`');
         debugQuery('INSERT `'.$gameid.'Properties` SELECT * FROM `myPHPproperties`');
-        debugQuery('ALTER TABLE `'.$gameid.'Properties` ADD `owner` VARCHAR( 16 ) NOT NULL');
-        */
         
         //join player into game
         debugQuery('UPDATE `myPHPusers` SET `money`=7500,`gameid`="'.$gameid.'" WHERE `username`="'.$username.'"');
@@ -170,7 +168,7 @@ function deleteGame($gameid){
     //delete all wizard cards
     /*debugQuery('DROP TABLE '.$gameid.'Wizards');*/
     //delete all properties
-    /*debugQuery('DROP TABLE '.$gameid.'Properties');*/
+    debugQuery('DROP TABLE '.$gameid.'Properties');
     //erase the gameMaster
     debugQuery('DELETE FROM `myPHPgames` WHERE `id`="'.$gameid.'"');
     //update all users with that gameid to no gameid and 7500 money
