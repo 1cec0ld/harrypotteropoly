@@ -184,13 +184,10 @@ function removeUser($username,$gameid){
     $gameData=$result->fetch_object();
     //if there are still players after this operation
     if($gameData->currentplayers > 1 and $username!=$gameData->creator){
-        echo '1';
         //decrement gameMaster's currentplayer count
         $newplayers=$gameData->currentplayers-1;
         debugQuery('UPDATE `myPHPusers` SET `gameid`="" WHERE `username`="'.$username.'" AND `gameid`="'.$gameid.'"');
-        echo '2';
         debugQuery('UPDATE `myPHPgames` SET `currentplayers`='.$newplayers.' WHERE `id`="'.$gameid.'"');
-        echo '3';
         //remove their name from every bean
         debugQuery('UPDATE `'.$gameid.'Beans` SET `owner`="" WHERE `owner`="'.$username.'"');
         //remove their name from every wizard
@@ -198,11 +195,9 @@ function removeUser($username,$gameid){
         //remove every upgrade from their properties
         /*TO BE FIGURED OUT AFTER PROPERTIES EXIST*/
         //remove their name from every property
-        echo '4';
         debugQuery('UPDATE `'.$gameid.'Properties` SET `owner`="" WHERE `owner`="'.$username.'"');
     } else {
         //otherwise delete the entire game
-        echo '5';
         deleteGame($gameid);
     }
 }
