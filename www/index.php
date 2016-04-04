@@ -90,11 +90,11 @@ function createGame($username,$gameid,$maxplayers){
                 if($username==$creatorObject->creator){
                     deleteGame($container->gameid);
                 } else {
-                    removeUser($username,$gameid);
+                    removeUser($username,$container->gameid);
                 }
             }
         } else {
-            debugQuery('INSERT INTO `myPHPusers` (`id` ,`username` ,`money` ,`gameid`, `created`, `position`) VALUES (NULL , "'.$username.'", "7500", "", NULL, "0")');
+            debugQuery('INSERT INTO `myPHPusers` (`id` ,`username` ,`money` ,`gameid`, `created`, `position`, `jailcount`, `doublescount`) VALUES (NULL , "'.$username.'", "7500", "", NULL, "0","0","0")');
         }
         //create gameMaster for new game
         debugQuery('INSERT INTO `myPHPgames` (`id` ,`creator` ,`currentplayers` ,`maxplayers`, `created`) VALUES ("'.$gameid.'" , "'.$username.'", 1, "'.$maxplayers.'", NULL)');
@@ -113,7 +113,7 @@ function createGame($username,$gameid,$maxplayers){
         debugQuery('INSERT `'.$gameid.'Properties` SELECT * FROM `myPHPproperties`');
         
         //join player into game
-        debugQuery('UPDATE `myPHPusers` SET `money`=7500,`gameid`="'.$gameid.'" WHERE `username`="'.$username.'"');
+        debugQuery('UPDATE `myPHPusers` SET `jailcount`=0,`doublescount`=0,`position`=0,`money`=7500,`gameid`="'.$gameid.'" WHERE `username`="'.$username.'"');
         $_SESSION['gameid']=$gameid;
         $_SESSION['username']=$username;
         echo formatError('Created Game!');
@@ -135,7 +135,7 @@ function joinGame($username,$gameid){
             } else if($countObject->currentplayers<$countObject->maxplayers){
                 $newCount=$countObject->currentplayers+1;
                 debugQuery('UPDATE `myPHPgames` SET `currentplayers`='.$newCount.' WHERE `id`="'.$gameid.'"');
-                debugQuery('UPDATE `myPHPusers` SET `money`=7500,`gameid`="'.$gameid.'" WHERE `username`="'.$username.'"');
+                debugQuery('UPDATE `myPHPusers` SET `jailcount`=0,`doublescount`=0,`position`=0,`money`=7500,`gameid`="'.$gameid.'" WHERE `username`="'.$username.'"');
                 $_SESSION['gameid'] = $_POST['gameid'];
                 $_SESSION['username'] = $_POST['username'];
                 echo formatError('Joined Game!');
@@ -145,7 +145,7 @@ function joinGame($username,$gameid){
                 showMainMenu();
             }
         } else if($countObject->currentplayers<$countObject->maxplayers){
-            debugQuery('INSERT INTO `myPHPusers` (`id` ,`username` ,`money` ,`gameid`, `created`,`position`) VALUES (NULL , "'.$username.'", "7500", "'.$gameid.'", NULL, "0")');
+            debugQuery('INSERT INTO `myPHPusers` (`id` ,`username` ,`money` ,`gameid`, `created`,`position`, `jailcount`, `doublescount`) VALUES (NULL , "'.$username.'", "7500", "'.$gameid.'", NULL, "0", "0","0")');
             $newCount=$countObject->currentplayers+1;
             debugQuery('UPDATE `myPHPgames` SET `currentplayers`='.$newCount.' WHERE `id`="'.$gameid.'"');
             $_SESSION['gameid'] = $_POST['gameid'];
@@ -173,7 +173,7 @@ function deleteGame($gameid){
     //erase the gameMaster
     debugQuery('DELETE FROM `myPHPgames` WHERE `id`="'.$gameid.'"');
     //update all users with that gameid to no gameid and 7500 money
-    debugQuery('UPDATE `myPHPusers` SET `money`=7500,`gameid`="" WHERE `gameid`="'.$gameid.'"');
+    debugQuery('UPDATE `myPHPusers` SET `jailcount`=0,`doublescount`=0,`position`=0,`money`=7500,`gameid`="" WHERE `gameid`="'.$gameid.'"');
 }
 function removeUser($username,$gameid){
     //assume the user exists
@@ -183,11 +183,14 @@ function removeUser($username,$gameid){
     $result=debugQuery('SELECT `currentplayers`,`creator` FROM `myPHPgames` WHERE `id`="'.$gameid.'"');
     $gameData=$result->fetch_object();
     //if there are still players after this operation
-    if($gameData->currentplayers > 1 and $username!=$gamedata->creator){
+    if($gameData->currentplayers > 1 and $username!=$gameData->creator){
+        echo '1';
         //decrement gameMaster's currentplayer count
         $newplayers=$gameData->currentplayers-1;
-        debugQuery('UPDATE `myPHPusers` SET `gameid`="" WHERE `gameid`="'.$gameid.'"');
+        debugQuery('UPDATE `myPHPusers` SET `gameid`="" WHERE `username`="'.$username.'" AND `gameid`="'.$gameid.'"');
+        echo '2';
         debugQuery('UPDATE `myPHPgames` SET `currentplayers`='.$newplayers.' WHERE `id`="'.$gameid.'"');
+        echo '3';
         //remove their name from every bean
         debugQuery('UPDATE `'.$gameid.'Beans` SET `owner`="" WHERE `owner`="'.$username.'"');
         //remove their name from every wizard
@@ -195,9 +198,11 @@ function removeUser($username,$gameid){
         //remove every upgrade from their properties
         /*TO BE FIGURED OUT AFTER PROPERTIES EXIST*/
         //remove their name from every property
+        echo '4';
         debugQuery('UPDATE `'.$gameid.'Properties` SET `owner`="" WHERE `owner`="'.$username.'"');
     } else {
         //otherwise delete the entire game
+        echo '5';
         deleteGame($gameid);
     }
 }
