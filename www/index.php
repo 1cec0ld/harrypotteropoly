@@ -10,6 +10,7 @@ const GALLEONS = 493;
 const SICKLES = 29;
 const KNUTS = 1;
 
+require 'functions.php';
 function formatError($str){
     return '<strong>'.$str.'</strong><br>';
 }
@@ -93,7 +94,7 @@ function createGame($username,$gameid,$maxplayers){
                 }
             }
         } else {
-            debugQuery('INSERT INTO `myPHPusers` (`id` ,`username` ,`money` ,`gameid`, `created`) VALUES (NULL , "'.$username.'", "7500", "", NULL)');
+            debugQuery('INSERT INTO `myPHPusers` (`id` ,`username` ,`money` ,`gameid`, `created`, `position`) VALUES (NULL , "'.$username.'", "7500", "", NULL, "0")');
         }
         //create gameMaster for new game
         debugQuery('INSERT INTO `myPHPgames` (`id` ,`creator` ,`currentplayers` ,`maxplayers`, `created`) VALUES ("'.$gameid.'" , "'.$username.'", 1, "'.$maxplayers.'", NULL)');
@@ -144,7 +145,7 @@ function joinGame($username,$gameid){
                 showMainMenu();
             }
         } else if($countObject->currentplayers<$countObject->maxplayers){
-            debugQuery('INSERT INTO `myPHPusers` (`id` ,`username` ,`money` ,`gameid`, `created`) VALUES (NULL , "'.$username.'", "7500", "'.$gameid.'", NULL)');
+            debugQuery('INSERT INTO `myPHPusers` (`id` ,`username` ,`money` ,`gameid`, `created`,`position`) VALUES (NULL , "'.$username.'", "7500", "'.$gameid.'", NULL, "0")');
             $newCount=$countObject->currentplayers+1;
             debugQuery('UPDATE `myPHPgames` SET `currentplayers`='.$newCount.' WHERE `id`="'.$gameid.'"');
             $_SESSION['gameid'] = $_POST['gameid'];
@@ -217,36 +218,49 @@ function doGame($username,$gameid){
         if ($currentgame->num_rows) {
             $game=$currentgame->fetch_object();
         } else {
+            showMainMenu();
             return;
         }
     }
-    if($currentuser = debugQuery('SELECT * FROM `myPHPusers` WHERE `username`="'.$username.'" AND `gameid`="'.$gameid.'"')){
+    $currentuser = debugQuery('SELECT * FROM `myPHPusers` WHERE `username`="'.$username.'" AND `gameid`="'.$gameid.'"');
         if ($currentuser->num_rows) {
-            $player=$currentuser->fetch_object();
+            $player=$currentuser->fetch_object();            
+            $currenttile = debugQuery('SELECT * FROM `'.$gameid.'Properties` WHERE `id`="'.$player->position.'"');
+            if ($currenttile->num_rows){
+                $property=$currenttile->fetch_object();
+            }
         } else {
             showMainMenu();
             return;
         }
 
         $userMoney=$player->money;
-        if (isset($_POST['go'])){
-            $userMoney += toNormalMoney(2,0,14);
+        //if (isset($_POST['go'])){
+        //    $userMoney += toNormalMoney(2,0,14);
+        if(isset($_POST['diceRoll'])){
+            $dice1=rand(1,6);
+            $dice2=rand(1,6);
+            $diceTotal=$dice1+$dice2;
+            echo '<span style="border:3px solid '.$player->color.'">Rolled '.$dice1.' and '.$dice2.'!</span><br>';
+            $player->position=($player->position+$diceTotal)%40;
+            debugQuery('UPDATE `myPHPusers` SET `position`='.$player->position.' WHERE `username`="'.$username.'"');
         } else if(isset($_POST['reset'])){
-            $userMoney = toNormalMoney(15, 3, 18);
             debugQuery('UPDATE myPHPusers SET `money`=7500 WHERE `gameid`="'.$gameid.'"');
+        } else if (isset($_POST['buyProp'])){
+            if($player->money > $property->purchaseprice){
+                debugQuery('UPDATE `'.$gameid.'Properties` SET `owner`="'.$username.'" WHERE `id`="'.$player->position.'"');
+            } else {
+                echo '<span style="border:3px solid crimson">Not Enough Funds!</span><br>';
+            }
         } else if(isset($_POST['send'])){
             if(isset($_POST['toWhom'])){
                 if(isset($_POST['galleonsTo']) and isset($_POST['sicklesTo']) and isset($_POST['knutsTo'])){
                     $subtotal=toNormalMoney($_POST['galleonsTo'], $_POST['sicklesTo'], $_POST['knutsTo']);
                     if( $subtotal < 0){
                         echo '<span style="border:3px solid crimson">Gringotts disapproves of your attempted treachery...</span><br>';
-                    } else if( $subtotal <= $userMoney ){
+                    } else if( $subtotal <= $player->money ){
                         echo '<span style="border:3px solid '.$player->color.'">Money Sent!</span><br>';
-                        $userMoney-=$subtotal;
-                        debugQuery('UPDATE myPHPusers SET `money`='.$userMoney.' WHERE `username`="'.$username.'"');
-                        $SELECTResult=debugQuery('SELECT `money` FROM `myPHPusers` WHERE `username`="'.$_POST['toWhom'].'"');
-                        $newMoney=$SELECTResult->fetch_object()->money+$subtotal;
-                        debugQuery('UPDATE myPHPusers SET `money`='.$newMoney.' WHERE `username`="'.$_POST['toWhom'].'"');
+                        sendMoney($username,$_POST['toWhom'],$subtotal);
                     } else {
                         echo '<span style="border:3px solid crimson">Not Enough Funds!</span><br>';
                     }
@@ -265,20 +279,12 @@ function doGame($username,$gameid){
                 }
             }
         } else if(isset($_POST['drawBean'])){
-            $userMoney=processBean($_SESSION['bean'],$username,$gameid);
-        }
-        $uploadUserData = 'UPDATE myPHPusers SET `money`='.$userMoney.' WHERE `username`="'.$username.'"';
-        if($UPDATEResult=debugQuery($uploadUserData)){
-        } else {
-            echo formatError('UPDATE Error!'.$db->error);
-            logError('Error on: '.$uploadUserData);
-            session_destroy();
-            die();
+            processBean($_SESSION['bean'],$username,$gameid);
         }
         $rando=array_rand($gameBeans);
         $_SESSION['bean']=$gameBeans[$rando];
         $players=array();
-        if($allUsers = debugQuery('SELECT `money`,`username`,`color` FROM `myPHPusers` WHERE `gameid`="'.$gameid.'"')){
+        if($allUsers = debugQuery('SELECT `money`,`username`,`color`,`position` FROM `myPHPusers` WHERE `gameid`="'.$gameid.'"')){
             if($allUsers->num_rows){
                 echo '<strong>Members of '.$gameid.':</strong><br>';
                 while($row=$allUsers->fetch_object()){
@@ -290,12 +296,17 @@ function doGame($username,$gameid){
                     }
                     echo '">';
                     
-                    echo $row->username.' with '.printHPMoney($row->money).' aka '.$row->money.' units.</span><br>';
+                    echo $row->username.' with '.printHPMoney($row->money).' aka '.$row->money.' units, at '.$row->position.'.</span><br>';
                 }
             }
         }
         echo "<form action='index.php' method='POST'>";
-        echo "    <input type='submit' name='go' value='Pass Go'>";
+        echo "    <input type='submit' name='diceRoll' value='Roll the Dice!'>";
+        echo '    <input type="submit" name="buyProp" value="Buy this Property!" ';
+        if($property->purchaseprice == 0 || $property->purchaseprice > $player->money){
+            echo 'disabled';
+        }
+        echo '>';
         echo '    <input type="submit" name="drawBean" value="Draw A Bean!" style="background-color:'.$_SESSION['bean']->color.'"><br>';
         echo '    Pay:    <input style="margin-left:10px" type="text" name="galleonsTo" size="1" value=0>-Galleons,
                     <input type="text" name="sicklesTo" size="1" value=0>-Sickles,
@@ -310,7 +321,6 @@ function doGame($username,$gameid){
                     echo '</select>';
                     echo '<input type="submit" name="send" value="Send!">';
         echo "</form>";
-    }
     if($username == $database){
         echo "<form action='index.php' method='POST'>";
         echo '    Set Money To:    <input style="margin-left:10px" type="text" name="galleonsSet" size="1" value=0>-Galleons,
