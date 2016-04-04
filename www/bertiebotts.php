@@ -16,9 +16,12 @@ function processBean($beanObject,$username,$gameid){
         printBean($value>0,'You '.($value<=0?'lost':'gained').' '.printHPMoney($value).'!',$beanObject);
         debugQuery('UPDATE `myPHPusers` SET `money`='.$newMoney.' WHERE `username`="'.$username.'"');
     } else if($beanObject->value=="GotoGo"){
-        printBean(true,'You Get a Letter to Hogwarts! This does nothing yet...',$beanObject);
+        printBean(true,'You Get a Letter to Hogwarts!',$beanObject);
+        $newMoney=$SELECTResult->fetch_object()->money+1000;
+        debugQuery('UPDATE `myPHPusers` SET `position`= 0,`money`='.$newMoney.' WHERE `username`="'.$username.'"');
     } else if($beanObject->value=="GotoJail"){
-        printBean(false,'Now Go To Azkaban! This does nothing yet...',$beanObject);
+        printBean(false,'Now Go To Azkaban!',$beanObject);
+        debugQuery('UPDATE `myPHPusers` SET `jailcount`=1,`position`=10');
     } else if($beanObject->value=="Fromeach250"){
         $result=debugQuery('SELECT `money`,`username` FROM `myPHPusers` WHERE `gameid`="'.$gameid.'"');
         $avar=0;
@@ -32,7 +35,7 @@ function processBean($beanObject,$username,$gameid){
         debugQuery('UPDATE `myPHPusers` SET `money`='.$newMoney.' WHERE `username`="'.$username.'"');
     } else {
         debugQuery('UPDATE `'.$gameid.'Beans` SET `owner`="'.$username.'" WHERE `name`="'.$beanObject->name.'"');
-        printBean(true,'You found a Get Out of Azaban Free Card! This does nothing yet...',$beanObject);
+        printBean(true,'You found a Get Out of Azkaban Free Card! This does nothing yet...',$beanObject);
     }
 }
 function printBean($good,$effect,$beanObject){
