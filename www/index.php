@@ -2,7 +2,6 @@
 echo '<title>HP Monopoly</title>';
 require 'sql_connect.php';
 require 'bertiebotts.php';
-require 'properties.php';
 
 session_start();
 
@@ -43,6 +42,7 @@ function debugQuery($statement){
         return $result;
     } else {
         logError($db->error);
+        session_destroy();
         die('Fatal error');
     }
 }
@@ -238,12 +238,7 @@ function doGame($username,$gameid){
         //if (isset($_POST['go'])){
         //    $userMoney += toNormalMoney(2,0,14);
         if(isset($_POST['diceRoll'])){
-            $dice1=rand(1,6);
-            $dice2=rand(1,6);
-            $diceTotal=$dice1+$dice2;
-            echo '<span style="border:3px solid '.$player->color.'">Rolled '.$dice1.' and '.$dice2.'!</span><br>';
-            $player->position=($player->position+$diceTotal)%40;
-            debugQuery('UPDATE `myPHPusers` SET `position`='.$player->position.' WHERE `username`="'.$username.'"');
+            processRoll($player);
         } else if(isset($_POST['reset'])){
             debugQuery('UPDATE myPHPusers SET `money`=7500 WHERE `gameid`="'.$gameid.'"');
         } else if (isset($_POST['buyProp'])){
@@ -283,10 +278,21 @@ function doGame($username,$gameid){
         }
         $rando=array_rand($gameBeans);
         $_SESSION['bean']=$gameBeans[$rando];
+        $currentuser = debugQuery('SELECT * FROM `myPHPusers` WHERE `username`="'.$username.'" AND `gameid`="'.$gameid.'"');
+            if ($currentuser->num_rows) {
+                $player=$currentuser->fetch_object();            
+                $currenttile = debugQuery('SELECT * FROM `'.$gameid.'Properties` WHERE `id`="'.$player->position.'"');
+                if ($currenttile->num_rows){
+                    $property=$currenttile->fetch_object();
+                }
+            } else {
+                showMainMenu();
+                return;
+            }
         $players=array();
-        if($allUsers = debugQuery('SELECT `money`,`username`,`color`,`position` FROM `myPHPusers` WHERE `gameid`="'.$gameid.'"')){
+        if($allUsers = debugQuery('SELECT `money`,`username`,`color`,`position`,`jailcount` FROM `myPHPusers` WHERE `gameid`="'.$gameid.'"')){
             if($allUsers->num_rows){
-                echo '<strong>Members of '.$gameid.':</strong><br>';
+                echo '<div style="float:left"><strong>Members of '.$gameid.':</strong><br>';
                 while($row=$allUsers->fetch_object()){
                     $players[]=$row->username;
                     echo '<span style="margin:0px';
@@ -295,19 +301,27 @@ function doGame($username,$gameid){
                         echo ';background-color:'.$row->color.'';
                     }
                     echo '">';
-                    
-                    echo $row->username.' with '.printHPMoney($row->money).' aka '.$row->money.' units, at '.$row->position.'.</span><br>';
+                    $propRow=debugQuery('SELECT `name` FROM `'.$gameid.'Properties` WHERE `id`='.$row->position.'');
+                    echo $row->username.' with '.printHPMoney($row->money).', at '.$propRow->fetch_object()->name.'.';
+                    if($row->position==10){
+                        echo $row->jailcount==0?' (Just Visiting)':' (Imprisoned)';
+                    }
+                    echo '</span><br>';
                 }
             }
         }
         echo "<form action='index.php' method='POST'>";
         echo "    <input type='submit' name='diceRoll' value='Roll the Dice!'>";
         echo '    <input type="submit" name="buyProp" value="Buy this Property!" ';
-        if($property->purchaseprice == 0 || $property->purchaseprice > $player->money){
+        if($property->purchaseprice == 0 or $property->purchaseprice > $player->money){
             echo 'disabled';
         }
         echo '>';
-        echo '    <input type="submit" name="drawBean" value="Draw A Bean!" style="background-color:'.$_SESSION['bean']->color.'"><br>';
+        echo '    <input type="submit" name="drawBean" value="Draw A Bean!" style="background-color:'.$_SESSION['bean']->color.'" ';
+        if($property->id != 7 and $property->id != 22 and $property->id != 36){
+            echo 'disabled';
+        }
+        echo '><br>';
         echo '    Pay:    <input style="margin-left:10px" type="text" name="galleonsTo" size="1" value=0>-Galleons,
                     <input type="text" name="sicklesTo" size="1" value=0>-Sickles,
                     <input type="text" name="knutsTo" size="1" value=0>-Knuts, To:
@@ -346,7 +360,8 @@ function doGame($username,$gameid){
     echo "    <br><input type='submit' name='changeColor' value='Customize Color'>";
     echo "    <input type='text' name='color' maxlength=12>";
     echo "</form>";
-    echo "<a target='_blank' href='http://www.w3schools.com/colors/colors_names.asp'>Full Color List Here!</a>";
+    echo "<a target='_blank' href='http://www.w3schools.com/colors/colors_names.asp'>Full Color List Here!</a></div>";
+    echo "<div style='display:inline-block'><img height='50px' src='complete.png'></div>";
 }
 
 if(isset($_POST['logout'])){
@@ -358,7 +373,7 @@ if(isset($_POST['logout'])){
     if(isset($_POST['username']) and preg_match('/^[A-Za-z0-9]{1,16}$/',$_POST['username'])){
         if (isset($_POST['gameid']) and preg_match('/^[A-Za-z0-9]{1,6}$/',$_POST['gameid'])){
             echo "Joining... ";
-            joinGame($_POST['username'],$_POST['gameid']);
+            joinGame($_POST['username'],strtolower($_POST['gameid']));
         } else {
             echo formatError('Invalid Game ID filled in!');
             showMainMenu();
@@ -372,7 +387,7 @@ if(isset($_POST['logout'])){
         if (isset($_POST['gameid']) and preg_match('/^[A-Za-z0-9]{1,6}$/',$_POST['gameid'])){
             if(isset($_POST['maxplayers']) and $_POST['maxplayers'] > 1){
                 echo "Creating... ";
-                createGame($_POST['username'],$_POST['gameid'],$_POST['maxplayers']);
+                createGame($_POST['username'],strtolower($_POST['gameid']),$_POST['maxplayers']);
             } else {
                 echo formatError('Please choose how many players can enter your game!!');
                 showMainMenu();
