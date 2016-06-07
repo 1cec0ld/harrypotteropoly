@@ -201,10 +201,116 @@ function removeUser($username,$gameid){
         deleteGame($gameid);
     }
 }
+function printBoard($gameArray){
+    echo "<table style='float:right;height:95vh;width:95vh;' border='1'>
+                <tr style='height:9.5vh'>
+                    <td style='width:9.5vh'></td>
+                    
+                    <td style='width:10.34vh'></td>
+                    
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    
+                    <td></td>
+                    
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    
+                    <td style='width:10.34vh'></td>
+                    
+                    <td style='width:9.5vh'></td>
+                </tr>
+                <tr style='height:10.76vh'>
+                    <td></td>
+                    
+                    <td rowspan='11' colspan='11'><img style='height:76vh;' src='complete.png'></td>
+                    
+                    <td style='width:9.5vh'></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    
+                    <td style='width:9.5vh'></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    
+                    <td style='width:9.5vh'></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    
+                    <td style='width:9.5vh'></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    
+                    <td style='width:9.5vh'></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    
+                    <td style='width:9.5vh'></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    
+                    <td style='width:9.5vh'></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    
+                    <td style='width:9.5vh'></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    
+                    <td style='width:9.5vh'></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    
+                    <td style='width:9.5vh'></td>
+                </tr>
+                <tr style='height:10.76vh'>
+                    <td></td>
+                    
+                    <td></td>
+                </tr>
+                <tr style='height:9.5vh'>
+                    <td style='width:9.5vh'></td>
+                    
+                    <td style='width:10.34vh'></td>
+                    
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    
+                    <td></td>
+                    
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    
+                    <td style='width:10.34vh'></td>
+                    
+                    <td style='width:9.5vh'></td>
+                </tr>
+            </table>";
+}
+
 function doGame($username,$gameid){
-    $gameBeans=loadBeans($gameid);
     global $database;
     header('Refresh:15');
+    echo "<div style='width:80vw'>";
+    printBoard(1);
+    $gameBeans=loadBeans($gameid);
     if(isset($_POST['color']) and !empty($_POST['color'])){
         debugQuery('UPDATE myPHPusers SET `color`="'.$_POST['color'].'" WHERE `username`="'.$username.'"');
     }
@@ -292,7 +398,7 @@ function doGame($username,$gameid){
         $players=array();
         if($allUsers = debugQuery('SELECT `money`,`username`,`color`,`position`,`jailcount` FROM `myPHPusers` WHERE `gameid`="'.$gameid.'"')){
             if($allUsers->num_rows){
-                echo '<div style="float:left"><strong>Members of '.$gameid.':</strong><br>';
+                echo /*'<div style="float:left">*/'<strong>Members of '.$gameid.':</strong><br>';
                 while($row=$allUsers->fetch_object()){
                     $players[]=$row->username;
                     echo '<span style="margin:0px';
@@ -360,8 +466,9 @@ function doGame($username,$gameid){
     echo "    <br><input type='submit' name='changeColor' value='Customize Color'>";
     echo "    <input type='text' name='color' maxlength=12>";
     echo "</form>";
-    echo "<a target='_blank' href='http://www.w3schools.com/colors/colors_names.asp'>Full Color List Here!</a></div>";
-    echo "<div style='display:inline-block'><img height='50px' src='complete.png'></div>";
+    echo "</div>";
+    //echo "<a target='_blank' href='http://www.w3schools.com/colors/colors_names.asp'>Full Color List Here!</a></div>";
+    //echo "<div><img height='800px' src='complete.png'></div>";
 }
 
 if(isset($_POST['logout'])){
